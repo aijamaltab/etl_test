@@ -21,28 +21,30 @@ import re
 import sys
 from datetime import datetime
 from pathlib import Path
+
 import psycopg2
 
 SQL_DIR = Path(__file__).parent.parent / "sql"
 PAYMENT_COLUMNS = ["payment_id", "contract_id", "prov_dt", "amount", "currency"]
 CONTRACT_COLUMNS = ["contract_id", "customer_id", "open_dt"]
 
-logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S %z")
 log = logging.getLogger("payments_etl")
 
+
 class FileError(Exception):
-    
     # ошибка на уровне всего файла: файл не грузим и дальше по очереди не идем
     def __init__(self, code, message):
         super().__init__(message)
         self.code = code
 
+
 def read_csv(path, expected_header):
-    
-    #возвращает список (номер строки, поля) и сколько пустых строк пропустили
-    #номер строки считается как в редакторе, заголовок = 1 строка
+    # возвращает список (номер строки, поля) и сколько пустых строк пропустили
+    # номер строки считается как в редакторе, заголовок = 1 строка
     try:
-        text = path.read_bytes().decode("utf-8-sig")
+        text = path.read_bytes().decode("utf-8-sig")  # utf-8-sig убирает BOM, его добавляет Excel
     except UnicodeDecodeError:
         raise FileError("FILE_ENCODING", "файл не в UTF-8")
 
@@ -83,7 +85,7 @@ def find_payment_files(data_dir):
 
 def load_contracts(conn, path):
     # справочник грузим целиком. если в нем ошибка - останавливаемся,
-    #без нормального справочника проверять платежи смысла нет
+    # без нормального справочника проверять платежи смысла нет
     rows, _ = read_csv(path, CONTRACT_COLUMNS)
     errors = []
     contracts = {}
@@ -259,7 +261,7 @@ def process_file(conn, path, seq):
 
             cur.execute("""
                 UPDATE load_files
-                SET status = 'success', finished_at = now(),
+                SET status = 'success', finished_at = clock_timestamp(),  -- now() дал бы время начала транзакции
                     rows_read = %s, rows_rejected = %s, rows_inserted = %s,
                     rows_updated = %s, rows_unchanged = %s
                 WHERE file_id = %s
@@ -330,6 +332,9 @@ def main():
                 results.append((path.name, "processed", stats))
 
         print_summary(results)
+        with conn.cursor() as cur:
+            cur.execute("SELECT count(*) FROM payments")
+            print(f"Всего платежей в таблице: {cur.fetchone()[0]}")
         return 0
     except FileError as e:
         log.error("%s - %s", e.code, e)

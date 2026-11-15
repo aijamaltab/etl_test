@@ -23,7 +23,7 @@ parsed AS (
     -- превращаю текст в дату так, чтобы не уронить файл:
     -- '2026-09-31'::date дал бы ошибку на весь файл, поэтому сначала проверяю сама:
     -- 1) формат ГГГГ-ММ-ДД, 2) такой день есть в этом месяце (31 сентября нет).
-    -- не прошло -> NULL -> строка уйдёт в reject с INVALID_DATE.
+    -- не прошло -> NULL -> строка уйдет в reject с INVALID_DATE.
     -- CASE внутри CASE, а не AND: так день точно не считается на мусорной строке
     SELECT
         n.*,
@@ -58,7 +58,6 @@ checked AS (
                 CASE WHEN p.amount_raw IS NOT NULL AND p.amount_num IS NULL THEN 'INVALID_AMOUNT' END,
                 CASE WHEN p.amount_num <= 0 THEN 'NON_POSITIVE_AMOUNT' END,
                 CASE WHEN scale(p.amount_num) > 2 THEN 'AMOUNT_SCALE' END,
-    
                 -- больше не влезет в numeric(18,2), INSERT упадет на весь файл
                 CASE WHEN p.amount_num > 9999999999999999.99 THEN 'AMOUNT_TOO_LARGE' END,
                 CASE WHEN p.currency IS NULL THEN 'MISSING_CURRENCY' END,
@@ -109,7 +108,7 @@ final AS (
         amount_num AS amount,  -- в numeric(18,2) приведется при вставке, тут еще бывает мусор
         currency,
         CASE
-            -- если у платежа в файле разные версии: отклоняю все, обьясненила свое решение в readme
+            -- если у платежа в файле разные версии: отклоняю все (почему - в README)
             WHEN n_versions > 1 THEN array_append(reasons, 'DUPLICATE_KEY_CONFLICT')
             -- если одинаковые строки: первая идет дальше, остальные в дубли
             WHEN n_versions = 1 AND rn > 1 THEN array_append(reasons, 'DUPLICATE_ROW')
