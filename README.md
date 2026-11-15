@@ -167,4 +167,4 @@ SELECT * FROM payments_etl.payments_running_count('2026-08-30', '2026-10-02');  
 - Запуск из Airflow: коды выхода (0, 1, 2) уже есть, загрузчик безопасен для retry.
 - Замер на большом файле.
 
-Знаю, что вы работаете с СУБД Vertica. Для Vertica логика та же: `COPY` пачкой в staging и set-based SQL, `MERGE` вместо `ON CONFLICT`, сегментация staging и `payments` по `payment_id`. DDL в Vertica коммитится сразу, а ограничения по умолчанию не проверяются, поэтому перезапускаемые скрипты и валидация в ETL там еще важнее
+Если переносить на Vertica, то логика та же: `COPY` пачкой в staging и set-based SQL, `MERGE` вместо `ON CONFLICT`, сегментация staging и `payments` по `payment_id`. DDL в Vertica коммитится сразу, а ограничения по умолчанию не проверяются, поэтому перезапускаемые скрипты и валидация в ETL там еще важнее
