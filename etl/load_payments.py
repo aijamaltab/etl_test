@@ -1,17 +1,15 @@
 """
 Загрузка платежей из CSV в PostgreSQL
 
-Подключение - через обычные переменные PGHOST, PGPORT, PGUSER, PGPASSWORD, PGDATABASE.
-Схема - ETL_SCHEMA (по умолчанию payments_etl)
+Запуск: python3 etl/load_payments.py data
+Подключение и настройки - через переменные окружения (PG*, ETL_SCHEMA, ETL_TIMEZONE), см. README.
 
 Проверки качества данных на двух уровнях:
 - файл целиком - здесь, в python: кодировка, заголовок, пустой файл, порядок и повтор файлов,
   справочник договоров. Если не прошло - файл не грузим.
 - каждая строка платежа - в sql/validate_payments.sql. Плохие строки уходят в payments_rejected
   с причинами, остальные грузит sql/apply_payments.sql.
-В конце по каждому файлу сверка: прочитано = добавлено + обновлено + без изменений + отклонено
-
-Запуск: python etl/load_payments.py data
+В конце по каждому файлу сверка: прочитано = добавлено + обновлено + без изменений + отклонено.
 """
 import csv
 import hashlib
@@ -33,16 +31,18 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(mess
 log = logging.getLogger("payments_etl")
 
 class FileError(Exception):
+    
     # ошибка на уровне всего файла: файл не грузим и дальше по очереди не идем
     def __init__(self, code, message):
         super().__init__(message)
         self.code = code
 
 def read_csv(path, expected_header):
-    # возвращает список (номер строки, поля) и сколько пустых строк пропустили
-    #номер строки как в редакторе, заголовок = 1
+    
+    #возвращает список (номер строки, поля) и сколько пустых строк пропустили
+    #номер строки считается как в редакторе, заголовок = 1 строка
     try:
-        text = path.read_bytes().decode("utf-8-sig") 
+        text = path.read_bytes().decode("utf-8-sig")
     except UnicodeDecodeError:
         raise FileError("FILE_ENCODING", "файл не в UTF-8")
 
@@ -55,7 +55,7 @@ def read_csv(path, expected_header):
     blank = 0
     for fields in reader:
         # пустую строку пропускаю, это лишний перенос в выгрузке
-        # а ',,,' - запись с пустыми полями, ее проверяем как обычно
+        # а ',,,,' - запись с пустыми полями, ее проверяем как обычно
         if not fields or (len(fields) == 1 and fields[0].strip() == ""):
             blank += 1
             continue

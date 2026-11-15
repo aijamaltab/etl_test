@@ -43,7 +43,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS load_files_success_name_uq
     ON load_files (file_name)
     WHERE status = 'success';
 
--- grain-зерно: одна строка на payment_id, в ней последняя корректная версия
+-- зерно (grain): одна строка на payment_id, в ней последняя корректная версия
 CREATE TABLE IF NOT EXISTS payments (
     payment_id     text PRIMARY KEY CHECK (payment_id ~ '^[A-Z0-9_-]{1,30}$'),
     contract_id    text NOT NULL REFERENCES contracts,
