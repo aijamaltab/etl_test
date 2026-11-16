@@ -35,6 +35,23 @@ python3 tests/run_checks.py
 
 В SQL-файлах схема не указана, она берется из `search_path`, поэтому решение разворачивается в любой схеме без правки файлов.
 
+На Windows (PowerShell) команды чуть другие: переменные задаются через `$env:`, psql нужно явно сказать, что файлы в UTF-8, а Python запускается как `python`:
+
+```powershell
+$env:PGHOST = "localhost"; $env:PGPORT = "5432"; $env:PGUSER = "..."; $env:PGPASSWORD = "..."; $env:PGDATABASE = "..."
+$env:PGCLIENTENCODING = "UTF8"
+
+psql -c "CREATE SCHEMA IF NOT EXISTS payments_etl;"
+$env:PGOPTIONS = "-c search_path=payments_etl"
+psql -v ON_ERROR_STOP=1 -f sql/create_tables.sql
+psql -v ON_ERROR_STOP=1 -f sql/payments_running_count.sql
+Remove-Item Env:PGOPTIONS
+
+python -m pip install -r requirements.txt
+python etl/load_payments.py data
+python tests/run_checks.py
+```
+
 ## Главные решения
 
 1. Формат CSV разбираю в Python, проверки строк делаю в SQL. `COPY` напрямую из файла падает целиком на одной кривой строке. Поэтому Python читает файл и кладет строки через `COPY` во временную staging-таблицу (все колонки `text`), а проверки и запись идут set-based на SQL.
@@ -167,4 +184,4 @@ SELECT * FROM payments_etl.payments_running_count('2026-08-30', '2026-10-02');  
 - Запуск из Airflow: коды выхода (0, 1, 2) уже есть, загрузчик безопасен для retry.
 - Замер на большом файле.
 
-Если переносить на Vertica, то логика та же: `COPY` пачкой в staging и set-based SQL, `MERGE` вместо `ON CONFLICT`, сегментация staging и `payments` по `payment_id`. DDL в Vertica коммитится сразу, а ограничения по умолчанию не проверяются, поэтому перезапускаемые скрипты и валидация в ETL там еще важнее
+Если переносить на Vertica, то логика та же: `COPY` пачкой в staging и set-based SQL, `MERGE` вместо `ON CONFLICT`, сегментация staging и `payments` по `payment_id`. DDL в Vertica коммитится сразу, а ограничения по умолчанию не проверяются, поэтому перезапускаемые скрипты и валидация в ETL там еще важнее.

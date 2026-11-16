@@ -2,7 +2,7 @@
 Загрузка платежей из CSV в PostgreSQL
 
 Запуск: python3 etl/load_payments.py data
-Подключение и настройки - через переменные окружения (PG*, ETL_SCHEMA, ETL_TIMEZONE), см. README.
+Подключение и настройки - через переменные окружения (PG*, ETL_SCHEMA, ETL_TIMEZONE), см. README
 
 Проверки качества данных на двух уровнях:
 - файл целиком - здесь, в python: кодировка, заголовок, пустой файл, порядок и повтор файлов,
@@ -296,6 +296,10 @@ def print_summary(results):
 
 
 def main():
+    # на Windows вывод в файл или pipe идет в cp1251/cp1252, и русский текст там падает
+    sys.stdout.reconfigure(encoding="utf-8")
+    sys.stderr.reconfigure(encoding="utf-8")
+
     data_dir = Path(sys.argv[1]) if len(sys.argv) > 1 else Path("data")
     schema = os.environ.get("ETL_SCHEMA", "payments_etl")
     timezone = os.environ.get("ETL_TIMEZONE", "Asia/Bishkek")

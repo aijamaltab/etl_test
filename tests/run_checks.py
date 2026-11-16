@@ -1,12 +1,12 @@
 """
-Проверки загрузчика на тестовых данных.
+Проверки загрузчика на тестовых данных
 
 Запуск из корня проекта: python3 tests/run_checks.py
 
-Все делается в отдельной схеме payments_etl_test, основная схема не трогается.
-Схема создается заново в начале и удаляется в конце.
-Подключение - через те же PG* переменные, что и у загрузчика.
-У каждого блока подписано, какое требование ТЗ он проверяет.
+Все делается в отдельной схеме payments_etl_test, основная схема не трогается
+Схема создается заново в начале и удаляется в конце
+Подключение - через те же PG* переменные, что и у загрузчика
+У каждого блока подписано, какое требование ТЗ он проверяет
 """
 import os
 import shutil
@@ -14,13 +14,11 @@ import subprocess
 import sys
 import tempfile
 from pathlib import Path
-
 import psycopg2
 
 SCHEMA = "payments_etl_test"
 ok_count = 0
 fail_count = 0
-
 
 def query(sql_text):
     # выполнить запрос в тестовой схеме и вернуть первое значение
@@ -30,7 +28,6 @@ def query(sql_text):
         value = cur.fetchone()[0]
     conn.close()
     return value
-
 
 def payments_snapshot():
     # все платежи списком - чтобы сравнить "до" и "после"
@@ -45,16 +42,14 @@ def payments_snapshot():
     conn.close()
     return rows
 
-
 def run_loader(data_dir):
     # запустить загрузчик на папке, вернуть код выхода и весь вывод
     env = dict(os.environ, ETL_SCHEMA=SCHEMA)
     result = subprocess.run(
         [sys.executable, "etl/load_payments.py", str(data_dir)],
-        env=env, capture_output=True, text=True,
+        env=env, capture_output=True, encoding="utf-8",  # загрузчик пишет в utf-8 и на Windows
     )
     return result.returncode, result.stdout + result.stderr
-
 
 def check(name, got, expected):
     global ok_count, fail_count
@@ -65,7 +60,6 @@ def check(name, got, expected):
         print(f"  [FAIL] {name}: ожидали {expected!r}, получили {got!r}")
         fail_count += 1
 
-
 def file_stats(file_name):
     # статистика файла из реестра в виде "прочитано/отклонено/добавлено/обновлено/без изменений"
     return query(f"""
@@ -73,7 +67,6 @@ def file_stats(file_name):
         FROM load_files
         WHERE file_name = '{file_name}' AND status = 'success'
     """)
-
 
 def create_schema():
     # схема с нуля: те же sql-файлы, что и для основной схемы
@@ -86,14 +79,12 @@ def create_schema():
         cur.execute(Path("sql/payments_running_count.sql").read_text(encoding="utf-8"))
     conn.close()
 
-
 def drop_schema():
     conn = psycopg2.connect()
     conn.autocommit = True
     with conn.cursor() as cur:
         cur.execute(f"DROP SCHEMA IF EXISTS {SCHEMA} CASCADE")
     conn.close()
-
 
 def main():
     os.chdir(Path(__file__).parent.parent)  # корень проекта
@@ -191,7 +182,6 @@ def main():
         return 0
     print(f"Не прошло: {fail_count} из {ok_count + fail_count}")
     return 1
-
 
 if __name__ == "__main__":
     sys.exit(main())
